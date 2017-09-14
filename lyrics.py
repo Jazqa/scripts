@@ -130,8 +130,8 @@ def main(stdscr):
                 pad_x = 0
             pad.refresh(pad_y, pad_x, 0, center_x, max_y - 1, max_x - 1)
 
-        # F1 restarts the script (f.ex. if the song chages)
-        if pad_key == curses.KEY_F1:
+        # F5 restarts the script (f.ex. if the song chages)
+        if pad_key == curses.KEY_F5:
             main(stdscr)
 
 

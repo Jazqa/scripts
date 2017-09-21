@@ -64,11 +64,9 @@ def main(stdscr):
     artist, track = process_metadata(get_metadata())
     lyrics = get_lyrics(artist, track)
 
-    # Adds a sexy title to the lyrics
-    title = ["║ " + artist + " - " + track + " ║"]
-    title = title + ["╚" + "═" * (len(title[0]) - 2) + "╝"]
-    title = ["╔" + "═" * (len(title[0]) - 2) + "╗"] + title
-    title = title + [" "]
+    # Adds a title to the lyrics
+    title = [artist + " - " + track]
+    title = [" "] + title + [" "] + [" "]
 
     longest = len(max(lyrics + title, key=len))
 
@@ -95,6 +93,10 @@ def main(stdscr):
     pad.refresh(pad_y, pad_x, 0, center_x, max_y - 1, max_x - 1)
 
     while True:
+        pad.timeout(999)
+        if track != process_metadata(get_metadata())[1]:
+            main(stdscr)
+
         pad_key = pad.getch()
 
         if pad_key == curses.KEY_RESIZE:
@@ -104,34 +106,34 @@ def main(stdscr):
             center_x = round(max_x / 2 - longest / 2)
             pad.refresh(pad_y, pad_x, 0, center_x, max_y - 1, max_x - 1)
 
-        if pad_key == curses.KEY_DOWN:
+        elif pad_key == curses.KEY_DOWN:
             if pad_y + 1 + max_y > len(lyrics + title):
                 pad_y = pad_y
             else:
                 pad_y += 1
             pad.refresh(pad_y, pad_x, 0, center_x, max_y - 1, max_x - 1)
 
-        if pad_key == curses.KEY_UP:
+        elif pad_key == curses.KEY_UP:
             pad_y -= 1
             if pad_y < 0:
                 pad_y = 0
             pad.refresh(pad_y, pad_x, 0, center_x, max_y - 1, max_x - 1)
 
-        if pad_key == curses.KEY_RIGHT:
+        elif pad_key == curses.KEY_RIGHT:
             if pad_x + 1 + max_x > len(max(lyrics, key=len)):
                 pad_x = pad_x
             else:
                 pad_x += 1
             pad.refresh(pad_y, pad_x, 0, center_x, max_y - 1, max_x - 1)
 
-        if pad_key == curses.KEY_LEFT:
+        elif pad_key == curses.KEY_LEFT:
             pad_x -= 1
             if pad_x < 0:
                 pad_x = 0
             pad.refresh(pad_y, pad_x, 0, center_x, max_y - 1, max_x - 1)
 
         # F5 restarts the script (f.ex. if the song chages)
-        if pad_key == curses.KEY_F5:
+        elif pad_key == curses.KEY_F5:
             main(stdscr)
 
 

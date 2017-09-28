@@ -3,26 +3,64 @@
 
 
 import curses
-import dbus
 import requests
+from sys import platform as pf
 from bs4 import BeautifulSoup as bs
 
+# Different operating systems store Spotify data differently
+if pf == "linux" or pf == "linux2":
+    import dbus
+elif pf == "darwin":
+    from subprocess import Popen, PIPE
+# elif pf == "win32" or "win64"
 
-def get_metadata():
-    """Returns the Spotify metadata"""
-    session_bus = dbus.SessionBus()
-    spotify_bus = session_bus.get_object("org.mpris.MediaPlayer2.spotify",
-                                         "/org/mpris/MediaPlayer2")
-    spotify_properties = dbus.Interface(spotify_bus, "org.freedesktop.DBus.Properties")
-    return spotify_properties.Get("org.mpris.MediaPlayer2.Player", "Metadata")
+def get_info():
+    """Returns the currently playing artist and track"""
+    if pf == "linux" or pf == "linux2":
+        # On Linux, data is available via dbus
+        spotify = dbus.Interface(dbus.SessionBus().get_object("org.mpris.MediaPlayer2.spotify", "/org/mpris/MediaPlayer2"),
+                                 "org.freedesktop.DBus.Properties").Get("org.mpris.MediaPlayer2.Player", "Metadata")
+        artist = spotify["xesam:artist"][0]
+        track = spotify["xesam:title"]
+
+    elif pf == "darwin":
+        # On MacOS, data has to be fetched with applescript
+        get_artist = """
+        on run {}
+            tell application "Spotify"
+                return artist of current track as string
+            end tell
+        end run
+        """
+
+        get_track = """
+        on run {}
+            tell application "Spotify"
+                return name of current track as string
+            end tell
+        end run
+        """
+
+        p = Popen(['/usr/bin/osascript', '-'], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+        stdout, stderr = p.communicate(get_artist)
+        artist = stdout.strip()
+
+        p = Popen(['/usr/bin/osascript', '-'], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+        stdout, stderr = p.communicate(get_track)
+        track = stdout.strip()
+
+    # elif pf == "win32" or "win64":
+
+    return artist, track
 
 
-def process_metadata(metadata):
-    """Processes the metadata and returns artist and track names"""
-    artist = metadata["xesam:artist"][0]
-    track = metadata["xesam:title"]
-
-    # Gets rid of the unnecessary tags
+def process_info(artist, track):
+    """
+    Processes the track information, removing unnecessary substrings,
+    such as "Remaster", "Mono Version" and so forth.
+    F.ex. process_info("Black Sabbath", "Into The Void - 2004 Remaster")
+    returns "Black Sabbath", "Into The Void
+    """
     if track.find(" - ") != -1:
         track = track[:track.index(" - ")]
     if track.find("(Mono") != -1:
@@ -55,13 +93,14 @@ def get_lyrics(artist, track):
 
 
 def main(stdscr):
-    """Prints and structures the lyrics"""
+    """Initializes the curses interface and prints the lyrics"""
     stdscr.clear()
     stdscr.refresh()
     curses.curs_set(0)
     max_y, max_x = stdscr.getmaxyx()
 
-    artist, track = process_metadata(get_metadata())
+    artist, track = get_info()
+    artist, track = process_info(artist, track)
     lyrics = get_lyrics(artist, track)
 
     # Adds a title to the lyrics
@@ -93,8 +132,10 @@ def main(stdscr):
     pad.refresh(pad_y, pad_x, 0, center_x, max_y - 1, max_x - 1)
 
     while True:
+        # Compares the currently playing track to the displayed track
+        # If a different track is playing, updates the lyrics
         pad.timeout(999)
-        if track != process_metadata(get_metadata())[1]:
+        if track != process_info(get_info()[0], get_info()[1])[1]:
             main(stdscr)
 
         pad_key = pad.getch()
@@ -106,6 +147,7 @@ def main(stdscr):
             center_x = round(max_x / 2 - longest / 2)
             pad.refresh(pad_y, pad_x, 0, center_x, max_y - 1, max_x - 1)
 
+        # Movement keys
         elif pad_key == curses.KEY_DOWN:
             if pad_y + 1 + max_y > len(lyrics + title):
                 pad_y = pad_y
@@ -132,7 +174,7 @@ def main(stdscr):
                 pad_x = 0
             pad.refresh(pad_y, pad_x, 0, center_x, max_y - 1, max_x - 1)
 
-        # F5 restarts the script (f.ex. if the song chages)
+        # F5 restarts the script
         elif pad_key == curses.KEY_F5:
             main(stdscr)
 

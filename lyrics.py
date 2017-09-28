@@ -14,6 +14,7 @@ elif pf == "darwin":
     from subprocess import Popen, PIPE
 # elif pf == "win32" or "win64"
 
+
 def get_info():
     """Returns the currently playing artist and track"""
     if pf == "linux" or pf == "linux2":
@@ -25,29 +26,20 @@ def get_info():
 
     elif pf == "darwin":
         # On MacOS, data has to be fetched with applescript
-        get_artist = """
+        spotify = """
         on run {}
             tell application "Spotify"
-                return artist of current track as string
+                set a to artist of current track as string
+                set t to name of current track as string
+                return a & " - " & t
             end tell
         end run
         """
-
-        get_track = """
-        on run {}
-            tell application "Spotify"
-                return name of current track as string
-            end tell
-        end run
-        """
-
         p = Popen(['/usr/bin/osascript', '-'], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
-        stdout, stderr = p.communicate(get_artist)
-        artist = stdout.strip()
-
-        p = Popen(['/usr/bin/osascript', '-'], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
-        stdout, stderr = p.communicate(get_track)
-        track = stdout.strip()
+        stdout, stderr = p.communicate(spotify)
+        spotify = stdout.strip().split( " - ")
+        artist = spotify[0]
+        track = spotify[1]
 
     # elif pf == "win32" or "win64":
 
@@ -177,7 +169,6 @@ def main(stdscr):
         # F5 restarts the script
         elif pad_key == curses.KEY_F5:
             main(stdscr)
-
 
 
 if __name__ == "__main__":

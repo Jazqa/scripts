@@ -95,7 +95,7 @@ def main():
     lyrics = get_lyrics(artist, track)
 
     # Adds a title to the lyrics
-    lyrics = [" "] + [artist + " - " + track] + [" "] + lyrics;
+    lyrics = [" "] + [artist + " - " + track] + [" "] + lyrics + [" "]
 
     width = os.get_terminal_size().columns
     longest = len(max(lyrics, key=len))

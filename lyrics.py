@@ -17,7 +17,6 @@ elif pf == "win32" or "win64":
     import pywintypes
     import win32gui
 
-
 def get_info():
     """Returns the currently playing artist and track"""
     if pf == "linux" or pf == "linux2":
@@ -46,10 +45,22 @@ def get_info():
 
     elif pf == "win32" or "win64":
         # On Windows, data is available through win32gui
-        artist, track = win32gui.GetWindowText(win32gui.FindWindow("SpotifyMainWindow", None)).split(" - ",1)
+        text = win32gui.GetWindowText(win32gui.FindWindow("SpotifyMainWindow", None))
 
-    return artist, track
+        # New Window 10 Spotify is not found with "SpotifyMainWindow" anymore, but "Chrome_WidgetWin_0" instead
+        if len(text) == 0:
+            # EnumHandler callback for win32gui.EnumWindows
+            def find_spotify_uwp(hwnd, hwnds):
+                text = win32gui.GetWindowText(hwnd)
+                if win32gui.GetClassName(hwnd) == "Chrome_WidgetWin_0" and len(text) > 0:
+                    hwnds.append(text)
+            # Use win32gui.EnumWindows to flood the array with potential Spotify Windows
+            # Note: Never seen other "Chrome_WidgetWin_0" instances with text
+            hwnds = []
+            win32gui.EnumWindows(find_spotify_uwp, hwnds)
+            text = hwnds[0]
 
+    return text.split(" - ",1)
 
 def process_info(artist, track):
     """

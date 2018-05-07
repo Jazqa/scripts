@@ -22,9 +22,14 @@ def get_info_linux():
     # On Linux, data is available via dbus
     spotify = dbus.Interface(dbus.SessionBus().get_object("org.mpris.MediaPlayer2.spotify", "/org/mpris/MediaPlayer2"),
                                 "org.freedesktop.DBus.Properties").Get("org.mpris.MediaPlayer2.Player", "Metadata")
+                                
     artist = spotify["xesam:artist"][0]
     track = spotify["xesam:title"]
-    return artist, track
+
+    if artist and track:
+        return artist, track
+    else:
+        return "Error", "Nothing playing"
 
 
 def get_info_mac():
@@ -40,7 +45,12 @@ def get_info_mac():
     """
     p = Popen(['/usr/bin/osascript', '-'], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     stdout, stderr = p.communicate(spotify)
-    artist, track = stdout.strip().split( " - ")
+
+    try:
+        artist, track = stdout.strip().split(" - ")
+    except:
+        return "Error", "Nothing playing"
+
     return artist, track
 
 
@@ -61,6 +71,9 @@ def get_info_windows():
     while windows.count != 0:
         try:
             text = windows.pop()
+        except:
+            return "Error", "Nothing playing"
+        try:
             artist, track = text.split(" - ",1)
             return artist, track
         except:
@@ -129,7 +142,7 @@ def main():
 
     # Centers and prints the lyrics
     for line in lyrics:
-        for i in range(0, int(start / 2) + int((longest - len(line)) / 2 )):
+        for _ in range(0, int(start / 2) + int((longest - len(line)) / 2 )):
             line = " " + line
         print(line)
 

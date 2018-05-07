@@ -4,6 +4,7 @@
 
 import os
 import requests
+import time
 from sys import platform as pf
 from bs4 import BeautifulSoup as bs
 
@@ -127,10 +128,7 @@ def get_lyrics(artist, track):
     return lyrics
 
 
-def main():
-    """Prints the lyrics"""
-    artist, track = get_info()
-    artist, track = process_info(artist, track)
+def print_lyrics(artist, track):
     lyrics = get_lyrics(artist, track)
 
     # Adds a title to the lyrics
@@ -145,6 +143,22 @@ def main():
         for _ in range(0, int(start / 2) + int((longest - len(line)) / 2 )):
             line = " " + line
         print(line)
+
+
+def main():
+    """Prints the lyrics"""
+    artist, track = get_info()
+    artist, track = process_info(artist, track)
+
+    print_lyrics(artist, track)
+
+    while True:
+        time.sleep(1)
+        nArtist, nTrack = get_info()
+        nArtist, nTrack = process_info(nArtist, nTrack)
+        if (track != nTrack or artist != nArtist):
+            artist, track = nArtist, nTrack
+            print_lyrics(artist, track)
 
 
 if __name__ == "__main__":

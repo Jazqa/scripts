@@ -17,50 +17,65 @@ elif pf == "win32" or "win64":
     import pywintypes
     import win32gui
 
+
+def get_info_linux():
+    # On Linux, data is available via dbus
+    spotify = dbus.Interface(dbus.SessionBus().get_object("org.mpris.MediaPlayer2.spotify", "/org/mpris/MediaPlayer2"),
+                                "org.freedesktop.DBus.Properties").Get("org.mpris.MediaPlayer2.Player", "Metadata")
+    artist = spotify["xesam:artist"][0]
+    track = spotify["xesam:title"]
+    return artist, track
+
+
+def get_info_mac():
+    # On MacOS, data has to be fetched with applescript
+    spotify = """
+    on run {}
+        tell application "Spotify"
+            set a to artist of current track as string
+            set t to name of current track as string
+            return a & " - " & t
+        end tell
+    end run
+    """
+    p = Popen(['/usr/bin/osascript', '-'], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+    stdout, stderr = p.communicate(spotify)
+    artist, track = stdout.strip().split( " - ")
+    return artist, track
+
+
+def get_info_windows():
+    windows = []
+        
+    # Older Spotify versions - simply FindWindow for "SpotifyMainWindow"
+    windows.append(win32gui.GetWindowText(win32gui.FindWindow("SpotifyMainWindow", None)))
+
+    # Newer Spotify versions - create an EnumHandler for EnumWindows and flood the list with Chrome_WidgetWin_0s
+    def find_spotify_uwp(hwnd, windows):
+        text = win32gui.GetWindowText(hwnd)
+        if win32gui.GetClassName(hwnd) == "Chrome_WidgetWin_0" and len(text) > 0:
+            windows.append(text)
+    
+    win32gui.EnumWindows(find_spotify_uwp, windows)
+
+    while windows.count != 0:
+        try:
+            text = windows.pop()
+            artist, track = text.split(" - ",1)
+            return artist, track
+        except:
+            pass
+
+
 def get_info():
     """Returns the currently playing artist and track"""
     if pf == "linux" or pf == "linux2":
-        # On Linux, data is available via dbus
-        spotify = dbus.Interface(dbus.SessionBus().get_object("org.mpris.MediaPlayer2.spotify", "/org/mpris/MediaPlayer2"),
-                                 "org.freedesktop.DBus.Properties").Get("org.mpris.MediaPlayer2.Player", "Metadata")
-        artist = spotify["xesam:artist"][0]
-        track = spotify["xesam:title"]
-
+        return get_info_linux()
     elif pf == "darwin":
-        # On MacOS, data has to be fetched with applescript
-        spotify = """
-        on run {}
-            tell application "Spotify"
-                set a to artist of current track as string
-                set t to name of current track as string
-                return a & " - " & t
-            end tell
-        end run
-        """
-        p = Popen(['/usr/bin/osascript', '-'], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
-        stdout, stderr = p.communicate(spotify)
-        spotify = stdout.strip().split( " - ")
-        artist = spotify[0]
-        track = spotify[1]
-
+        return get_info_mac()
     elif pf == "win32" or "win64":
-        # On Windows, data is available through win32gui
-        text = win32gui.GetWindowText(win32gui.FindWindow("SpotifyMainWindow", None))
+        return get_info_windows()
 
-        # New Window 10 Spotify is not found with "SpotifyMainWindow" anymore, but "Chrome_WidgetWin_0" instead
-        if len(text) == 0:
-            # EnumHandler callback for win32gui.EnumWindows
-            def find_spotify_uwp(hwnd, hwnds):
-                text = win32gui.GetWindowText(hwnd)
-                if win32gui.GetClassName(hwnd) == "Chrome_WidgetWin_0" and len(text) > 0:
-                    hwnds.append(text)
-            # Use win32gui.EnumWindows to flood the array with potential Spotify Windows
-            # Note: Never seen other "Chrome_WidgetWin_0" instances with text
-            hwnds = []
-            win32gui.EnumWindows(find_spotify_uwp, hwnds)
-            text = hwnds[0]
-
-    return text.split(" - ",1)
 
 def process_info(artist, track):
     """
